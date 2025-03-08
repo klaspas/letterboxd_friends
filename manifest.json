@@ -1,0 +1,28 @@
+{
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [
+      {
+         "js": [
+            "jquery/jquery-3.5.0.min.js",
+            "main.js"
+         ],
+         "matches": [
+            "https://letterboxd.com/film/*"
+         ],
+         "run_at": "document_end",
+         "all_frames": true
+      }
+   ],
+   "description": "Shows a extra Histogram for your friends",
+   "manifest_version": 3,
+   "name": "Friends Average for Letterboxd",
+   "host_permissions": [
+	"https://letterboxd.com/*"
+   ],
+   "icons": {
+      "128": "icon.png"
+   },
+   "version": "1.0"
+}
