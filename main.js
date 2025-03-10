@@ -13,7 +13,8 @@ let getinfo = async () => {
     var main_nav = $('.main-nav').html();
     if (typeof main_nav == 'undefined') {
         await sleep(100);
-        getinfo();
+        let user_movie = getinfo();
+        return user_movie
     }
     else {
         let movie_link = $('meta[property="og:url"]').attr('content');
