@@ -147,30 +147,47 @@ const formatRatingLabels = (ratingCounts, percentRatings) => {
     });
 };
 
-const buildHTMLStructure = () => {
-    const str1 = `<section class="section ratings-histogram-chart">
-        <h2 class="section-heading"><a href="" id="aaa" title="">Your Friends</a></h2>
-        <a href="" id="aab" class="all-link more-link"></a>
-        <span class="average-rating" itemprop="aggregateRating" itemscope="" itemtype="http://schema.org/AggregateRating">
-            <a href="" id="a11" class="tooltip display-rating -highlight" data-popup=""></a>
-        </span>
-        <div class="rating-histogram clear rating-histogram-exploded">
-            <span class="rating-green rating-green-tiny rating-1"><span class="rating rated-2">★</span></span>
-            <ul>`;
-    const str2 = Array.from({ length: 10 }, (_, i) =>
-        `<li id="li${i+1}" class="rating-histogram-bar" style="width: 15px; left: ${i * 16}px">
-            <a href="" id="a${i+1}" class="ir tooltip"></a>
-        </li>`
-    ).join('');
-    const str3 = `</ul>
-            <span class="rating-green rating-green-tiny rating-5"><span class="rating rated-10">★★★★★</span></span>
-        </div>
-        <div class="twipsy fade above in" id="popup1" style="display: none">
-            <div id="popup2" class="twipsy-arrow" style="left: 50%;"></div>
-            <div id="aad" class="twipsy-inner"></div>
-        </div>
-    </section>`;
-    return $.parseHTML(str1 + str2 + str3);
+const buildHTMLStructure = (hrefHead, hrefLikes, likesText, avg1, dataPopup, ratingCounts, ratingLabels, maxRating) => {
+    const stars = ['half-★', '★', '★½', '★★', '★★½', '★★★', '★★★½', '★★★★', '★★★★½', '★★★★★'];
+    const starPath = 'M5.065.45c-.22-.61-.95-.59-1.14 0l-.75 2.57H.705c-.73 0-.96.62-.37 1.07l1.99 1.53-.76 2.49c-.22.73.34 1.16.93.71l2-1.53 2 1.53c.59.45 1.15.02.93-.71l-.76-2.49 1.99-1.53c.59-.45.39-1.07-.33-1.07h-2.48z';
+    const svgStart = '<svg xmlns="http://www.w3.org/2000/svg" role="graphics-symbol" class="glyph stars -start -rating" width="9" height="9" viewBox="0 0 9 9" aria-label="★"><title>★</title><path transform="translate(0,0)" fill-rule="evenodd" d="' + starPath + '"></path></svg>';
+    const svgEnd = '<svg xmlns="http://www.w3.org/2000/svg" role="graphics-symbol" class="glyph stars -end -rating" width="49" height="9" viewBox="0 0 49 9" aria-label="★★★★★"><title>★★★★★</title>' + [0,10,20,30,40].map(x => '<path transform="translate(' + x + ',0)" fill-rule="evenodd" d="' + starPath + '"></path>').join('') + '</svg>';
+
+    let barsHtml = '';
+    for (let i = 0; i < 10; i++) {
+        const value = maxRating > 0 ? ratingCounts[i] / maxRating : 0;
+        barsHtml +=
+            '<tr class="column" style="--value:' + value + ';">' +
+            '<th scope="row" class="_sr-only">' + stars[i] + '</th>' +
+            '<td class="cell">' +
+            '<a href="' + hrefHead + '" id="a' + (i+1) + '" class="barcolumn tooltip" data-popup="' + ratingLabels[i].replace(/"/g, '&quot;') + '">' +
+            '<span class="_sr-only">' + ratingLabels[i] + '</span>' +
+            '<span class="bar"><span class="fill"></span></span>' +
+            '</a>' +
+            '</td>' +
+            '</tr>';
+    }
+
+    const str =
+        '<section class="section ratings-histogram-chart">' +
+        '<header class="section-header -divider -spaced-loose">' +
+        '<h2 class="section-heading -omitdivider heading"><a href="' + hrefHead + '">Your Friends</a></h2>' +
+        '<aside class="aside"><div class="section-accessories">' +
+        '<a href="' + hrefLikes + '" class="accessory">' + likesText + '</a>' +
+        '</div></aside>' +
+        '</header>' +
+        '<div class="rating-histogram"><div class="layout">' +
+        svgStart +
+        '<table class="chart"><caption class="_sr-only">Rating Distribution</caption>' +
+        '<thead class="_sr-only"><tr><th scope="col">Rating</th><th scope="col">Count</th></tr></thead>' +
+        '<tbody class="plot">' + barsHtml + '</tbody></table>' +
+        svgEnd +
+        '<a href="' + hrefHead + '" id="a11" class="averagerating tooltip" data-popup="' + dataPopup + '">' + avg1 + '</a>' +
+        '</div></div>' +
+        '<div class="twipsy fade above in" id="popup1" style="display:none"><div id="popup2" class="twipsy-arrow" style="left:50%;"></div><div id="aad" class="twipsy-inner"></div></div>' +
+        '</section>';
+
+    return $.parseHTML(str);
 };
 //new
 const prepareHTML = (table, user, movie) => {
@@ -179,7 +196,7 @@ const prepareHTML = (table, user, movie) => {
 
     const [ avg, votes ] = calculateAverages(ratingList);
     const ratingCounts = getRatingCounts(ratingList);
-    const [ relativeRatings, percentRatings ] = getRelativeAndPercentRatings(ratingCounts, votes);
+    const [ , percentRatings ] = getRelativeAndPercentRatings(ratingCounts, votes);
     const ratingLabels = formatRatingLabels(ratingCounts, percentRatings);
 
     if (debug) {
@@ -193,31 +210,13 @@ const prepareHTML = (table, user, movie) => {
     const avg1 = avg ? avg.toFixed(1) : '–.–';
     const avg2 = avg ? avg.toFixed(2) : '–.–';
 
-    const hrefHead = `${user}friends/film/${movie}`;
+    const hrefHead = `https://letterboxd.com${user}friends/film/${movie}`;
     const hrefLikes = `${hrefHead}/likes/`;
     const dataPopup = `Average of ${avg2} based on ${votes} ${votes === 1 ? 'rating' : 'ratings'}`;
+    const likesText = `${likeCount} ${likeCount === 1 ? 'like' : 'likes'}`;
+    const maxRating = Math.max(...ratingCounts);
 
-    let html = buildHTMLStructure();
-
-    $(html).find('#aaa').attr('href', hrefHead);
-    $(html).find('#aab')
-        .attr('href', hrefLikes)
-        .text(`${likeCount} ${likeCount === 1 ? 'like' : 'likes'}`);
-    $(html).find('#a11')
-        .attr('href', hrefHead)
-        .attr('data-popup', dataPopup)
-        .text(avg1);
-
-    ratingLabels.forEach((label, i) => {
-        const id = `#a${i+1}`;
-        const heightStr = `<i id="i${i+1}" style="height: ${relativeRatings[i]}px;"></i>`;
-        $(html).find(id)
-            .attr('href', hrefHead)
-            .text(label)
-            .append($.parseHTML(heightStr));
-    });
-
-    return html;
+    return buildHTMLStructure(hrefHead, hrefLikes, likesText, avg1, dataPopup, ratingCounts, ratingLabels, maxRating);
 };
 
 // const xxx = (table, user, movie) => {
@@ -334,14 +333,14 @@ const getWidths = async () => {
     popup.css({display: 'block', top: '-3px', left: '-10px'});
 
     for (const id of ids) {
-        const text = $(`#${id}`).text();
+        const text = $(`#${id}`).data('popup');
         aad.text(text);
-        widthList.push(aad.width())
+        widthList.push(aad.width());
     }
 
     const extraText = $('#a11').data('popup');
     aad.text(extraText);
-    widthList.push(aad.width());
+    widthList.push(popup.outerWidth());
 
     popup.css('display', 'none');
     return widthList
@@ -375,45 +374,30 @@ document.addEventListener(
     'mousemove', (e) => {
         if (!barWidths) return;
 
-        const ids = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10', 'a11'];
-        const element = e.target;
-        const id = $(element).attr('id');
-        const parentId = $(element).parent().attr('id');
-
-        let targetId;
-        if (ids.includes(id)) {
-            targetId = id;
-        } else if (ids.includes(parentId)) {
-            targetId = parentId;
-        } else {
-            targetId = null;
-        }
-
-        if (!targetId) {
+        const element = $(e.target).closest('#a1,#a2,#a3,#a4,#a5,#a6,#a7,#a8,#a9,#a10,#a11');
+        if (!element.length) {
             $('#popup1').attr('style', 'display: none');
             return;
         }
 
-        const liNr = Number(targetId.replace('a', ''));
-        if (isNaN(liNr)) return;
+        const id = element.attr('id');
+        const text = element.data('popup');
+        let position;
+        let arrow;
 
-        let text
-        let position
-        let arrow
-
-        if (targetId == 'a11') {
-            text = $(element).data('popup');
-            position = - (Number(barWidths[10]) * 3 / 4) + 190;
-            arrow = "left: 155px"
-        }
-        else {
-            text = $(element).text() || $(element).parent().text();
-            position = - (Number(barWidths[liNr - 1]) / 2) + (liNr * 16) - 7.5;
-            arrow = "left: 50%";
+        if (id === 'a11') {
+            const offsetParentLeft = $('#a1').offsetParent().offset().left;
+            const a11Center = element.offset().left + element.outerWidth() / 2 - offsetParentLeft;
+            position = a11Center - Number(barWidths[10]) / 2;
+            arrow = 'left: 50%';
+        } else {
+            const liNr = Number(id.replace('a', ''));
+            position = -(Number(barWidths[liNr - 1]) / 2) + (liNr * 16) - 7.5;
+            arrow = 'left: 50%';
         }
 
-        $('#popup1').attr('style', 'display: block; top: -3px; left:' + position + 'px;')
-        $('#popup2').attr('style', arrow)
+        $('#popup1').attr('style', 'display: block; top: -3px; left:' + position + 'px;');
+        $('#popup2').attr('style', arrow);
         $('#aad').text(text);
     }, false
 );
