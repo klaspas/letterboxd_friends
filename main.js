@@ -1,71 +1,73 @@
 
-let sleep = function (ms) {
+const sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 };
 
-let getHTML = function (url) {
-    return fetch(url).then(result => { return result.text() })
+const getHTML = function (url) {
+    return fetch(url).then(result => { return result.text(); });
 };
 
 
-let getinfo = async () => {
+const getinfo = async () => {
     // Gets Username and movie from the current site
-    var main_nav = $('.main-nav').html();
-    if (typeof main_nav == 'undefined') {
+    const main_nav = $('.main-nav').html();
+    if (typeof main_nav === 'undefined') {
         await sleep(100);
-        let user_movie = getinfo();
-        return user_movie
+        const user_movie = getinfo();
+        return user_movie;
     }
     else {
-        let movie_link = $('meta[property="og:url"]').attr('content');
+        const movie_link = $('meta[property="og:url"]').attr('content');
         url_part = movie_link.split('film/')[1].split('/')[1];
-        let exclude = ['members', 'likes', 'reviews', 'ratings', 'fans', 'lists'];
+        const exclude = ['members', 'likes', 'reviews', 'ratings', 'fans', 'lists'];
         if (!exclude.includes(url_part)) {
-            let movie = movie_link.match('(?<=film\/)(.*?)(?=\/)')[0];
-            let user_link = $('a:contains("Profile")').parent().html();
-            let user = $(user_link).attr('href');
+            const movie = movie_link.match('(?<=film\/)(.*?)(?=\/)')[0];
+            const user_link = $('a:contains("Profile")').parent().html();
+            const user = $(user_link).attr('href');
             if (typeof user !== 'undefined') {
                 return [user, movie];
             }
         }
         return null;
     }
-}
+};
 
-let getContent = async (url, user_movie) => {
-    var rating_list = [];
-    var person_count = 0
-    var like_count = 0;
+const getContent = async (url, user_movie) => {
+    const rating_list = [];
+    let person_count = 0;
+    let like_count = 0;
     while (true) {
         if (url !== 'undefined') {
-            let html = getHTML(url);
+            const html = getHTML(url);
             table = await html.then(function (html) {
-                let tbody = $(html).find('tbody').html();
+                const tbody = $(html).find('tbody').html();
                 if (typeof tbody !== 'undefined') {
-                    let table = '<tbody>' + tbody + '</tbody>';
+                    const table = '<tbody>' + tbody + '</tbody>';
                     $(table).find('tr').each(function () {
                         person = $(this).find(".name").attr('href');
                         if (person !== user_movie[0]) {
-                            rating = $(this).find(".rating").attr('class')
+                            rating = $(this).find(".rating").attr('class');
                             person_count += 1;
-                            let like = $(this).find('.icon-liked').html();
+                            const like = $(this).find('.icon-liked').html();
                             if (typeof like !== 'undefined') {
                                 like_count += 1;
                             }
                             if (typeof rating !== 'undefined') {
-                                rating = rating.split('-')[1];
-                                rating_list.push(Number(rating));
+                                const ratingMatch = rating.match(/rated-(\d+)/);
+                                if (ratingMatch) {
+                                    rating_list.push(Number(ratingMatch[1]));
+                                }
                             }
                         }
                     });
 
                 }
-                let next_page_loc = $(html).find('.next').parent().html();
-                let next_page = $(next_page_loc).attr('href');
+                const next_page_loc = $(html).find('.next').parent().html();
+                const next_page = $(next_page_loc).attr('href');
                 return [next_page, rating_list, person_count, like_count];
 
-            })
-            if (typeof table[0] == 'undefined') {
+            });
+            if (typeof table[0] === 'undefined') {
                 if (table[1].length == 0 & table[3] == 0)
                     break;
                 else {
@@ -82,7 +84,7 @@ let getContent = async (url, user_movie) => {
     }
 };
 
-let prepContent = function (table, user_movie) {
+const prepContent = function (table, user_movie) {
     rating_list = table[1];
     votes = rating_list.length;
     console.log('Ratings:', rating_list);
@@ -94,7 +96,7 @@ let prepContent = function (table, user_movie) {
     }
     else {
         let sum = 0;
-        for (var r of rating_list) {
+        for (const r of rating_list) {
             sum += r;
         }
         avg = sum / (votes * 2);
@@ -111,9 +113,9 @@ let prepContent = function (table, user_movie) {
         rating = 'ratings';
     }
     data_popup = 'Average of ' + avg_2 + ' based on ' + votes + ' ' + rating;
-    let rating_count = [];
+    const rating_count = [];
     for (let i = 1; i < 11; i++) {
-        count = 0
+        count = 0;
         for (rating of rating_list) {
             if (rating == i) {
                 count += 1;
@@ -122,21 +124,15 @@ let prepContent = function (table, user_movie) {
         rating_count.push(count);
     }
 
-    let max_rating = Math.max(...rating_count);
-    let relative_rating = [];
-    let percent_rating = [];
+    const max_rating = Math.max(...rating_count);
+    const percent_rating = [];
 
     for (rating of rating_count) {
-        let hight = (rating / max_rating) * 44.0;
-        if (hight < 1 || hight == Number.POSITIVE_INFINITY || isNaN(hight)) {
-            hight = 1;
-        }
-        relative_rating.push(hight);
-        let perc = Math.round((rating / votes) * 100);
+        const perc = Math.round((rating / votes) * 100);
         percent_rating.push(perc);
     }
 
-    let rat = [];
+    const rat = [];
     stars = ['half-★', '★', '★½', '★★', '★★½', '★★★', '★★★½', '★★★★', '★★★★½', '★★★★★'];
     for (let i = 1; i < 11; i++) {
         if (rating_count[i - 1] == 1)
@@ -149,119 +145,107 @@ let prepContent = function (table, user_movie) {
     };
 
 
-    str1 = '<section class="section ratings-histogram-chart"><h2 class="section-heading"><a href="" id="aaa" title="">Ratings from Friends</a></h2><a href="" id="aab" class="all-link more-link"></a><span class="average-rating" itemprop="aggregateRating" itemscope="" itemtype="http://schema.org/AggregateRating"><a href="" id="a11" class="tooltip display-rating -highlight" data-popup =""></a></span><div class="rating-histogram clear rating-histogram-exploded">        <span class="rating-green rating-green-tiny rating-1">            <span class="rating rated-2">★</span>        </span>        <ul>';
-    str2 = '<li id="li1" class="rating-histogram-bar" style="width: 15px; left: 0px"> <a href="" id="a1" class="ir tooltip"</a> </li><li id="li2" class="rating-histogram-bar" style="width: 15px; left: 16px"><a href="" id="a2" class="ir tooltip"></a></li><li id="li3" class="rating-histogram-bar" style="width: 15px; left: 32px"><a href="" id="a3" class="ir tooltip"></a></li><li id="li4" class="rating-histogram-bar" style="width: 15px; left: 48px"><a href="" id="a4" class="ir tooltip"></a></li><li id="li5" class="rating-histogram-bar" style="width: 15px; left: 64px"><a href="" id="a5" class="ir tooltip"></a></li><li id="li6" class="rating-histogram-bar" style="width: 15px; left: 80px"><a href="" id="a6" class="ir tooltip"></a></li><li id="li7" class="rating-histogram-bar" style="width: 15px; left: 96px"><a href="" id="a7" class="ir tooltip"></a></li><li id="li8" class="rating-histogram-bar" style="width: 15px; left: 112px"><a href="" id="a8" class="ir tooltip"></a></li><li id="li9" class="rating-histogram-bar" style="width: 15px; left: 128px"><a href="" id="a9" class="ir tooltip"></a></li><li id="li10" class="rating-histogram-bar" style="width: 15px; left: 144px"><a href="" id="a10" class="ir tooltip"></a></li></ul><span class="rating-green rating-green-tiny rating-5"><span class="rating rated-10">★★★★★</span></span></div>';
-    str3 = '<div class="twipsy fade above in" id="popup1", style="display: none"> <div id="popup2" class="twipsy-arrow" style="left: 50%;"></div> <div id = "aad" class="twipsy-inner"></div> </div> </section>';
-    str = str1 + str2 + str3;
+    const starPath = 'M5.065.45c-.22-.61-.95-.59-1.14 0l-.75 2.57H.705c-.73 0-.96.62-.37 1.07l1.99 1.53-.76 2.49c-.22.73.34 1.16.93.71l2-1.53 2 1.53c.59.45 1.15.02.93-.71l-.76-2.49 1.99-1.53c.59-.45.39-1.07-.33-1.07h-2.48z';
+    const svgStart = '<svg xmlns="http://www.w3.org/2000/svg" role="graphics-symbol" class="glyph stars -start -rating" width="9" height="9" viewBox="0 0 9 9" aria-label="★"><title>★</title><path transform="translate(0,0)" fill-rule="evenodd" d="' + starPath + '"></path></svg>';
+    const svgEnd = '<svg xmlns="http://www.w3.org/2000/svg" role="graphics-symbol" class="glyph stars -end -rating" width="49" height="9" viewBox="0 0 49 9" aria-label="★★★★★"><title>★★★★★</title>' + [0,10,20,30,40].map(x => '<path transform="translate(' + x + ',0)" fill-rule="evenodd" d="' + starPath + '"></path>').join('') + '</svg>';
 
-    html = $.parseHTML(str)
-    $(html).find('#aaa').attr('href', href_head);
-    $(html).find('#aab').attr('href', href_likes);
-    if (table[3] == 1) {
-        $(html).find('#aab').text('1 like');
-    }
-    else {
-        $(html).find('#aab').text(table[3] + ' likes');
-    }
-    $(html).find('#a11').attr('href', href_head);
-    $(html).find('#a11').attr('data-popup', data_popup);
-    $(html).find('#a11').text(avg_1);
+    const likes_text = table[3] == 1 ? '1 like' : table[3] + ' likes';
 
-    for (let i = 1; i < 11; i++) {
-        let id = '#a' + i
-        let i_str = '<i id = "i' + i + '" style=" height: ' + relative_rating[i - 1] + 'px;"></i>'
-        $(html).find(id).attr('href', href_head);
-        $(html).find(id).text(rat[i - 1]);
-        $(html).find(id).append($.parseHTML(i_str));
+    let bars_html = '';
+    for (let i = 0; i < 10; i++) {
+        const value = max_rating > 0 ? rating_count[i] / max_rating : 0;
+        bars_html +=
+            '<tr class="column" style="--value:' + value + ';">' +
+            '<th scope="row" class="_sr-only">' + stars[i] + '</th>' +
+            '<td class="cell">' +
+            '<a href="' + href_head + '" id="a' + (i+1) + '" class="barcolumn tooltip" data-popup="' + rat[i].replace(/"/g, '&quot;') + '">' +
+            '<span class="_sr-only">' + rat[i] + '</span>' +
+            '<span class="bar"><span class="fill"></span></span>' +
+            '</a>' +
+            '</td>' +
+            '</tr>';
     }
 
+    const str =
+        '<section class="section ratings-histogram-chart">' +
+        '<header class="section-header -divider -spaced-loose">' +
+        '<h2 class="section-heading -omitdivider heading"><a href="' + href_head + '">Ratings from Friends</a></h2>' +
+        '<aside class="aside"><div class="section-accessories">' +
+        '<a href="' + href_likes + '" class="accessory">' + likes_text + '</a>' +
+        '</div></aside>' +
+        '</header>' +
+        '<div class="rating-histogram"><div class="layout">' +
+        svgStart +
+        '<table class="chart"><caption class="_sr-only">Rating Distribution</caption>' +
+        '<thead class="_sr-only"><tr><th scope="col">Rating</th><th scope="col">Count</th></tr></thead>' +
+        '<tbody class="plot">' + bars_html + '</tbody></table>' +
+        svgEnd +
+        '<a href="' + href_head + '" id="a11" class="averagerating tooltip" data-popup="' + data_popup + '">' + avg_1 + '</a>' +
+        '</div></div>' +
+        '<div class="twipsy fade above in" id="popup1" style="display:none"><div id="popup2" class="twipsy-arrow" style="left:50%;"></div><div id="aad" class="twipsy-inner"></div></div>' +
+        '</section>';
+
+    html = $.parseHTML(str);
     injectContent(html);
     return true;
-}
+};
 
-let injectContent = function (html) {
+const injectContent = function (html) {
 
     path = $('.sidebar');
     $(html).appendTo(path);
-    console.log('Injected')
+    console.log('Injected');
     return true;
-}
+};
 
-let getWidths = async () => {
-    var ids = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10'];
-    var widths = []
-    $('#popup1').attr('style', 'display: block; top: -3px; left: -10px;')
-
-    for (a of ids) {
-        id = '#' + a;
-        let text = $(id).text();
+const getWidths = async () => {
+    const widths = [];
+    $('#popup1').attr('style', 'display: block; top: -3px; left: -10px;');
+    for (let i = 1; i <= 11; i++) {
+        const text = $('#a' + i).data('popup');
         $('#aad').text(text);
-        let width = $('#aad').width();
-        widths.push(width)
+        widths.push($('#aad').width());
     }
+    $('#popup1').attr('style', 'display: none');
+    return widths;
+};
 
-    text = $('#a11').data('popup')
-    $('#aad').text(text);
-    let width = $('#aad').width();
-    widths.push(width);
-
-    $('#popup1').attr('style', 'display: none')
-    return widths
-}
-
-let main = async () => {
-    var user_movie = await getinfo();
+const main = async () => {
+    const user_movie = await getinfo();
     if (user_movie !== null && typeof user_movie !== 'undefined') {
-        var user = user_movie[0];
-        var movie = user_movie[1];
-        let newURL = 'https://letterboxd.com' + user + 'friends/film/' + movie;
+        const user = user_movie[0];
+        const movie = user_movie[1];
+        const newURL = 'https://letterboxd.com' + user + 'friends/film/' + movie;
         chrome.runtime.sendMessage({ content: newURL });
         promise = await getContent(newURL, user_movie);
         widths = await getWidths();
-        return widths
+        return widths;
     }
-}
+};
 
 
 
 
 
 widths = main();
-var ids = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10', 'a11'];
 
 document.addEventListener('mousemove', function (e) {
-    var element = e.srcElement;
-    single = $(element).attr('id')
-    double = $(element).parent().attr('id')
-    if (ids.includes(double) || ids.includes(single)) {
-        if (single == 'a11') {
-            text = $(element).data('popup');
-            li_nr = 11;
-            // let width = $('#aad').width();
-            var position = - (Number(widths[li_nr - 1]) * 3 / 4) + 190;
-            var arrow = "left: 145px"
+    const element = $(e.target).closest('#a1,#a2,#a3,#a4,#a5,#a6,#a7,#a8,#a9,#a10,#a11');
+    if (element.length) {
+        const id = element.attr('id');
+        const text = element.data('popup');
+        if (id == 'a11') {
+            var position = -(Number(widths[10]) * 3 / 4) + 190;
+            var arrow = 'left: 145px';
+        } else {
+            const li_nr = Number(id.replace('a', ''));
+            var position = -(Number(widths[li_nr - 1]) / 2) + (li_nr * 16) - 7.5;
+            var arrow = 'left: 50%';
         }
-
-        else {
-            text = $(element).text();
-            if (text == '') {
-                text = $(element).parent().text();
-            }
-            li_nr = Number(single.replace('a', ''));
-            if (isNaN(li_nr)) {
-                li_nr = Number(double.replace('a', ''));
-            }
-            // let width = $('#aad').width();
-            var position = - (Number(widths[li_nr - 1]) / 2) + (li_nr * 16) - 7.5;
-            var arrow = "left: 50%";
-
-        }
-
-        $('#popup1').attr('style', 'display: block; top: -3px; left:' + position + 'px;')
-        $('#popup2').attr('style', arrow)
+        $('#popup1').attr('style', 'display: block; top: -3px; left:' + position + 'px;');
+        $('#popup2').attr('style', arrow);
         $('#aad').text(text);
-    }
-    else {
+    } else {
         $('#popup1').attr('style', 'display: none');
     }
 }, false);
