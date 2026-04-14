@@ -204,7 +204,7 @@ const getWidths = async () => {
     for (let i = 1; i <= 11; i++) {
         const text = $('#a' + i).data('popup');
         $('#aad').text(text);
-        widths.push($('#aad').width());
+        widths.push(i === 11 ? $('#popup1').outerWidth() : $('#aad').width());
     }
     $('#popup1').attr('style', 'display: none');
     return widths;
@@ -235,8 +235,10 @@ document.addEventListener('mousemove', function (e) {
         const id = element.attr('id');
         const text = element.data('popup');
         if (id == 'a11') {
-            var position = -(Number(widths[10]) * 3 / 4) + 190;
-            var arrow = 'left: 145px';
+            const offsetParentLeft = $('#a1').offsetParent().offset().left;
+            const a11Center = element.offset().left + element.outerWidth() / 2 - offsetParentLeft;
+            var position = a11Center - Number(widths[10]) / 2;
+            var arrow = 'left: 50%';
         } else {
             const li_nr = Number(id.replace('a', ''));
             var position = -(Number(widths[li_nr - 1]) / 2) + (li_nr * 16) - 7.5;
