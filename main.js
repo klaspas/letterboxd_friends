@@ -169,7 +169,7 @@ const prepContent = function (table, user_movie) {
     const str =
         '<section class="section ratings-histogram-chart">' +
         '<header class="section-header -divider -spaced-loose">' +
-        '<h2 class="section-heading -omitdivider heading"><a href="' + href_head + '">Ratings from Friends</a></h2>' +
+        '<h2 class="section-heading -omitdivider heading"><a href="' + href_head + '">Your Friends</a></h2>' +
         '<aside class="aside"><div class="section-accessories">' +
         '<a href="' + href_likes + '" class="accessory">' + likes_text + '</a>' +
         '</div></aside>' +
