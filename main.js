@@ -60,7 +60,7 @@ const parseHistogram = (histogramHtml) => {
 };
 
 const fetchRatingsData = async (user, movie) => {
-    const ratingsUrl = `https://letterboxd.com${user}friends/film/${movie}/ratings/`;
+    const ratingsUrl = `https://letterboxd.com${user}friends/film/${movie}/`;
     const histogramUrl = `https://letterboxd.com/csi${user}friends/film/${movie}/histogram/`;
 
     const [ratingsHtml, histogramHtml] = await Promise.all([
