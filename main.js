@@ -3,11 +3,10 @@ const sleep = (ms) =>{
 };
 
 const getHTML = (url) => {
-    return fetch(url).then(result => { return result.text() })
-};
-
-const getNextPageUrl = (html) => {
-    return html.find('.next').closest('a').attr('href') || null;
+    return fetch(url).then(result => {
+        if (!result.ok) throw new Error(`HTTP ${result.status} fetching ${url}`);
+        return result.text();
+    });
 };
 
 const notloggedIn = () => {
@@ -42,89 +41,44 @@ const getUserandMovie = async (retries = 5) => {
     return [user, movie];
 };
 
-const getRatingsPage = async (url, selfUser, movie) => {
-    const ratingList = [];
-    let personCount = 0
-    let likeCount = 0;
+const parseHistogram = (histogramHtml) => {
+    const $html = $($.parseHTML(histogramHtml.trim()));
+    const ratingCount = [];
 
-    while (url && url !== 'undefined') {
-
-        const html = await getHTML(url);
-
-        const tbody = $(html).find('tbody').html();
-        if (!tbody) return;
-
-        const rows = extractTableRows($(html));
-
-        for (const row of rows) {
-            const result = extractRatings(row, selfUser);
-            if (!result) continue
-
-            const [ rating, liked ] = result;
-            personCount++;
-            if (rating) ratingList.push(rating);
-            if (liked) likeCount++;
-        }
-
-        const nextPage = getNextPageUrl($(html))
-        if (!nextPage) {
-            if (ratingList.length === 0 && likeCount === 0) {
-                console.log("Friends Average for Letterboxd extension info:\nNo ratings and likes from your friends for this film, so nothing to show.")
-                return
-            };
-            return [ ratingList, personCount, likeCount ]
-        }
-        url = `https://letterboxd.com${nextPage}`;
-
-
-    }
-};
-
-const extractRatings = ($row, currentUser) => {
-    const person = $row.find('.name').attr('href');
-    let rating = null;
-    if (person === currentUser) return null;
-
-    const liked = $row.find('.icon-liked').length > 0;
-
-    const ratingClass = $row.find('.rating').attr('class') || '';
-    const ratingMatch = ratingClass.match(/rated-(\d+)/); // finds string 'rated-' with one or more digits
-    if (ratingMatch) {
-        rating = Number(ratingMatch[1])
-    }
-
-    return [ rating, liked ];
-};
-
-const extractTableRows = ($html) => {
-    const tbody = $html.find('tbody').html();
-    if (!tbody) return [];
-
-    const rowsTable = $('<tbody>' + tbody + '</tbody>');
-    const rows = [];
-
-    rowsTable.find('tr').each(function () {
-        rows.push($(this));
+    $html.find('tr.column').each(function () {
+        const title = $(this).find('a.barcolumn, span.barcolumn').attr('title') || '';
+        const match = title.match(/^(\d+)/);
+        ratingCount.push(match ? Number(match[1]) : 0);
     });
-    return rows;
+
+    const avgTitle = $html.find('a.averagerating').attr('title') || '';
+    const avgMatch = avgTitle.match(/Average of ([\d.]+) based on (\d+)/);
+    const avg = avgMatch ? Number(avgMatch[1]) : null;
+    const votes = avgMatch ? Number(avgMatch[2]) : ratingCount.reduce((a, b) => a + b, 0);
+
+    return { ratingCount, avg, votes };
 };
 
-const calculateAverages = (ratingList) => {
-    const votes = ratingList.length;
-    if (votes === 0) {
-        return [ None , votes ];
-    }
-    const sum = ratingList.reduce((acc, r) => acc + r, 0);
-    const avg = sum / (votes * 2);
-    return [ avg, votes ];
-};
+const fetchRatingsData = async (user, movie) => {
+    const ratingsUrl = `https://letterboxd.com${user}friends/film/${movie}/`;
+    const histogramUrl = `https://letterboxd.com/csi${user}friends/film/${movie}/histogram/`;
 
-const getRatingCounts = (ratingList) => {
-    const counts = Array(10).fill(0); // start with [0,0,...,0]
-    for (const r of ratingList) {
-        counts[r - 1]++; // rating 1 goes to index 0
+    const [ratingsHtml, histogramHtml] = await Promise.all([
+        getHTML(ratingsUrl),
+        getHTML(histogramUrl)
+    ]);
+
+    const likesTitle = $(ratingsHtml).find('.js-route-likes a.tooltip').attr('title') || '';
+    const likesMatch = likesTitle.match(/(\d+)/);
+    const likeCount = likesMatch ? Number(likesMatch[1]) : 0;
+
+    const { ratingCount, avg, votes } = parseHistogram(histogramHtml);
+
+    if (votes === 0 && likeCount === 0) {
+        console.log("Friends Average for Letterboxd extension info:\nNo ratings and likes from your friends for this film, so nothing to show.");
+        return null;
     }
-    return counts;
+    return { ratingCount, avg, votes, likeCount };
 };
 
 const getRelativeAndPercentRatings = (ratingCounts, votes) => {
@@ -189,22 +143,15 @@ const buildHTMLStructure = (hrefHead, hrefLikes, likesText, avg1, dataPopup, rat
 
     return $.parseHTML(str);
 };
-//new
-const prepareHTML = (table, user, movie) => {
-    const ratingList = table[0];
-    const likeCount = table[2];
-
-    const [ avg, votes ] = calculateAverages(ratingList);
-    const ratingCounts = getRatingCounts(ratingList);
-    const [ , percentRatings ] = getRelativeAndPercentRatings(ratingCounts, votes);
-    const ratingLabels = formatRatingLabels(ratingCounts, percentRatings);
+const prepareHTML = ({ ratingCount, avg, votes, likeCount }, user, movie) => {
+    const [ , percentRatings ] = getRelativeAndPercentRatings(ratingCount, votes);
+    const ratingLabels = formatRatingLabels(ratingCount, percentRatings);
 
     if (debug) {
-        console.log('Ratings:', ratingList);
-        console.log('Person Count:', table[1]);
+        console.log('Rating counts:', ratingCount);
         console.log('Votes Count:', votes);
         console.log('Like Count:', likeCount);
-        console.log('Average Rating:', avg.toFixed(3));
+        console.log('Average Rating:', avg ? avg.toFixed(3) : null);
     }
 
     const avg1 = avg ? avg.toFixed(1) : '–.–';
@@ -214,9 +161,9 @@ const prepareHTML = (table, user, movie) => {
     const hrefLikes = `${hrefHead}/likes/`;
     const dataPopup = `Average of ${avg2} based on ${votes} ${votes === 1 ? 'rating' : 'ratings'}`;
     const likesText = `${likeCount} ${likeCount === 1 ? 'like' : 'likes'}`;
-    const maxRating = Math.max(...ratingCounts);
+    const maxRating = Math.max(...ratingCount);
 
-    return buildHTMLStructure(hrefHead, hrefLikes, likesText, avg1, dataPopup, ratingCounts, ratingLabels, maxRating);
+    return buildHTMLStructure(hrefHead, hrefLikes, likesText, avg1, dataPopup, ratingCount, ratingLabels, maxRating);
 };
 
 // const xxx = (table, user, movie) => {
@@ -352,11 +299,11 @@ const main = async () => {
         notloggedIn();
         return;
     };
-    [user, movie] = userMovie
-    const newURL = `https://letterboxd.com${user}friends/film/${movie}`;
-    const results = await getRatingsPage(newURL, user);
-    if (!results) return;
-    const html = prepareHTML(results, user, movie);
+    [user, movie] = userMovie;
+    chrome.runtime.sendMessage({ content: `https://letterboxd.com${user}friends/film/${movie}/ratings/` });
+    const data = await fetchRatingsData(user, movie);
+    if (!data) return;
+    const html = prepareHTML(data, user, movie);
     injectHTML(html);
     const widths = await getWidths();
     return widths
