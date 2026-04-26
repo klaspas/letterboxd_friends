@@ -11,13 +11,13 @@
          "matches": [
             "https://letterboxd.com/film/*"
          ],
-         "run_at": "document_end",
+         "run_at": "document_start",
          "all_frames": true
       }
    ],
    "description": "Shows a extra Histogram for your friends",
    "manifest_version": 3,
-   "name": "Friends Average for Letterboxd",
+   "name": "Friends Average for Letterboxd start",
    "host_permissions": [
 	"https://letterboxd.com/*"
    ],
