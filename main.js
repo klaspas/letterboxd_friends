@@ -256,7 +256,10 @@ const debug = true;
 
     const tooltip = $('#popup1');
     const tooltipText = $('#aad');
+    const arrow = $('#popup2');
+
     let currentId = null;
+    let visible = false;
 
     document.addEventListener('mousemove', (e) => {
 
@@ -265,10 +268,13 @@ const debug = true;
         );
 
         if (!element.length) {
-            tooltip.css('display', 'none');
-            currentId = null;
+            if (visible) {
+                tooltip.removeClass('in');
+                visible = false;
+                currentId = null;
+            }
             return;
-        };
+        }
 
         const id = element.attr('id');
 
@@ -300,13 +306,8 @@ const debug = true;
         );
 
         const elementCenter = rect.left + rect.width / 2;
-
         let arrowLeft = elementCenter - left;
-
-        arrowLeft = Math.max(
-            8,
-            Math.min(arrowLeft, tooltipWidth - 8)
-        );
+        arrowLeft = Math.max(8, Math.min(arrowLeft, tooltipWidth - 8));
 
         const top = rect.top - tooltipHeight - 1;
 
@@ -315,9 +316,13 @@ const debug = true;
             left: `${left}px`,
             top: `${top}px`
         });
-        $('#popup2').css({
+        arrow.css({
             left: `${arrowLeft}px`
         });
+        if (!visible) {
+            tooltip.addClass('twipsy fade above in');
+            visible = true;
+        }
 
     });
 
