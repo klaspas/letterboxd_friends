@@ -17,12 +17,12 @@
    ],
    "description": "Shows a extra Histogram for your friends",
    "manifest_version": 3,
-   "name": "Friends Average for Letterboxd start",
+   "name": "Friends Average for Letterboxd",
    "host_permissions": [
 	"https://letterboxd.com/*"
    ],
    "icons": {
       "128": "icon.png"
    },
-   "version": "1.2"
+   "version": "1.5"
 }
