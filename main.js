@@ -11,7 +11,6 @@ const getHTML = (url) => {
 
 const getMovie = () => {
     const parts = location.pathname.split('/').filter(Boolean);
-    console.log(parts);
 
     // must be exactly: ["film", "movie-name"] and nothing more
     if (parts.length !== 2 || parts[0] !== 'film') return null;
@@ -27,7 +26,6 @@ const getUser = () => {
     if (!match) return null;
 
     const user = decodeURIComponent(match.split('=')[1]);
-    console.log(user)
     return user
 }
 
@@ -200,6 +198,37 @@ const getWidths = async () => {
     return widthList
 };
 
+const getWidthsBetter = async () => {
+    const ids = ['a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7', 'a8', 'a9', 'a10'];
+    const widthList = [];
+    const popup = $('#popup1');
+    const aad = $('#aad');
+
+    popup.css({
+    display: 'block',
+    visibility: 'hidden',
+    top: '-3px',
+    left: '-10px'
+    });
+
+    for (const id of ids) {
+        const text = $(`#${id}`).data('popup');
+        aad.text(text);
+        console.log(
+            aad.width(),
+            aad[0].getBoundingClientRect().width
+        );
+        widthList.push(aad[0].getBoundingClientRect().width);
+    }
+
+    const extraText = $('#a11').data('popup');
+    aad.text(extraText);
+    widthList.push(popup.outerWidth());
+
+    popup.css('display', 'none');
+    return widthList
+};
+
 const main = async () => {
 
     const user = getUser();
@@ -216,46 +245,80 @@ const main = async () => {
     
     const html = prepareHTML(data, user, movie);
     injectHTML(html);
-    const widths = await getWidths();
-    return widths
+    return
 };
 
-let barWidths = null;
 const debug = true;
-(
-    async () => {
-    barWidths = await main();
-    }
-)();
 
-document.addEventListener(
-    'mousemove', (e) => {
-        if (!barWidths) return;
+(async () => {
+    
+    await main();
 
-        const element = $(e.target).closest('#a1,#a2,#a3,#a4,#a5,#a6,#a7,#a8,#a9,#a10,#a11');
+    const tooltip = $('#popup1');
+    const tooltipText = $('#aad');
+    let currentId = null;
+
+    document.addEventListener('mousemove', (e) => {
+
+        const element = $(e.target).closest(
+            '#a1,#a2,#a3,#a4,#a5,#a6,#a7,#a8,#a9,#a10,#a11'
+        );
+
         if (!element.length) {
-            $('#popup1').attr('style', 'display: none');
+            tooltip.css('display', 'none');
+            currentId = null;
             return;
-        }
+        };
 
         const id = element.attr('id');
-        const text = element.data('popup');
-        let position;
-        let arrow;
 
-        if (id === 'a11') {
-            const offsetParentLeft = $('#a1').offsetParent().offset().left;
-            const a11Center = element.offset().left + element.outerWidth() / 2 - offsetParentLeft;
-            position = a11Center - Number(barWidths[10]) / 2;
-            arrow = 'left: 50%';
-        } else {
-            const liNr = Number(id.replace('a', ''));
-            position = -(Number(barWidths[liNr - 1]) / 2) + (liNr * 16) - 7.5;
-            arrow = 'left: 50%';
-        }
+        // ONLY update text if element changed
+        if (id !== currentId) {
+            currentId = id;
+            tooltipText.text(element.data('popup'));
+        };
 
-        $('#popup1').attr('style', 'display: block; top: -3px; left:' + position + 'px;');
-        $('#popup2').attr('style', arrow);
-        $('#aad').text(text);
-    }, false
-);
+        const rect = element[0].getBoundingClientRect();
+
+        tooltip.css({
+            display: 'block',
+            visibility: 'hidden',
+            position: 'fixed',
+            top: '0px',
+            left: '0px'
+        });
+
+        const tooltipWidth = tooltip.outerWidth();
+        const tooltipHeight = tooltip.outerHeight();
+        const viewportWidth = window.innerWidth;
+        const padding = 8;
+
+        let left = rect.left + rect.width / 2 - tooltipWidth / 2;
+        left = Math.max(
+            padding,
+            Math.min(left, viewportWidth - tooltipWidth - padding)
+        );
+
+        const elementCenter = rect.left + rect.width / 2;
+
+        let arrowLeft = elementCenter - left;
+
+        arrowLeft = Math.max(
+            8,
+            Math.min(arrowLeft, tooltipWidth - 8)
+        );
+
+        const top = rect.top - tooltipHeight - 1;
+
+        tooltip.css({
+            visibility: 'visible',
+            left: `${left}px`,
+            top: `${top}px`
+        });
+        $('#popup2').css({
+            left: `${arrowLeft}px`
+        });
+
+    });
+
+})();
